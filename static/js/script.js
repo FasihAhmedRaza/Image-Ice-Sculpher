@@ -776,14 +776,11 @@ function updateChatWithNewImage(newImageUrl) {
                 actionsContainer.style.gap = "10px";
                 actionsContainer.style.marginTop = "10px";
 
-                // Download button
-                const downloadBtn = createActionButton("Download", "static/icons/download.png", () => {
-                    const link = document.createElement("a");
-                    link.href = data.image_url;
-                    link.download = `generated_${Date.now()}.png`;
-                    link.click();
-                });
+                // Track generated image id for favorite action
+                const addedImage = window.addGeneratedImage ? addGeneratedImage(data.image_url) : null;
+                const currentImageId = addedImage && addedImage.id ? addedImage.id : Date.now();
 
+                // Download button
                 // Select button
                 const selectBtn = createActionButton("Select", "static/icons/select.png", () => {
                     fetch(data.image_url)
@@ -795,6 +792,13 @@ function updateChatWithNewImage(newImageUrl) {
                         });
                 });
 
+                const downloadBtn = createActionButton("Download", "static/icons/download.png", () => {
+                    const link = document.createElement("a");
+                    link.href = data.image_url;
+                    link.download = `generated_${Date.now()}.png`;
+                    link.click();
+                });
+
                 const expandBtn = createActionButton("Expand", "static/icons/editing.png", () => {
                     // First open the modal
                     openModal(data.image_url);
@@ -803,6 +807,12 @@ function updateChatWithNewImage(newImageUrl) {
                     handleExpandButtonClick()
                     // When user confirms edits and sends:
                     // Fetch the image and add it to formData
+                });
+
+                const favoriteBtn = createActionButton("Favorite", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fc8344'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.54 0 3.04.99 3.57 2.36h.87C13.46 4.99 14.96 4 16.5 4 19 4 21 6 21 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>", () => {
+                    if (window.toggleFavorite) {
+                        toggleFavorite(currentImageId, data.image_url, favoriteBtn);
+                    }
                 });
 
 
@@ -891,6 +901,11 @@ function updateChatWithNewImage(newImageUrl) {
                                         extractedLogoImg.style.border = "1px solid #ddd";
                                         logoMessageContent.appendChild(extractedLogoImg);
 
+                                        // Add extracted logo image to slider
+                                        if (window.addGeneratedImage) {
+                                            addGeneratedImage(logoUrl);
+                                        }
+
                                         const downloadLogoBtn = createActionButton("Download Logo", "static/icons/download.png", () => {
                                             const link = document.createElement("a");
                                             link.href = logoUrl;
@@ -928,16 +943,14 @@ function updateChatWithNewImage(newImageUrl) {
 
 
 
-                actionsContainer.appendChild(downloadBtn);
                 actionsContainer.appendChild(selectBtn);
+                actionsContainer.appendChild(downloadBtn);
                 actionsContainer.appendChild(expandBtn);
-
-
+                actionsContainer.appendChild(favoriteBtn);
 
 
                 outputContainer.appendChild(generatedImg);
                 outputContainer.appendChild(actionsContainer);
-
 
                 // Conditionally show the button if applicable
                 const inputContainer = document.createElement("div");

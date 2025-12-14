@@ -99,6 +99,10 @@ app = Flask(__name__)
 CORS(app)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "default-secret-key")  # Required for sessions
 app.config["UPLOAD_FOLDER"] = "static/uploads"
+app.config["GENERATED_FOLDER"] = "static/generated"
+
+# Ensure generated folder exists
+os.makedirs(app.config["GENERATED_FOLDER"], exist_ok=True)
 
 # Load OpenAI API key
 load_dotenv()
@@ -112,6 +116,14 @@ def encode_image(image_path):
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html")
+
+@app.route("/generated-gallery", methods=["GET"])
+def generated_gallery():
+    return render_template("generated_gallery.html")
+
+@app.route("/favorites-gallery", methods=["GET"])
+def favorites_gallery():
+    return render_template("favorites_gallery.html")
 
 def classify_prompt_type(prompt):
     classification_messages = [
@@ -464,8 +476,7 @@ def handle_template_selection():
     return jsonify({"status": "success", "message": "Template selection received"})
 
 
-
-client2 = genai.Client(api_key="AIzaSyA35TkmFo9npLFtia7G2kK7ZtPNRa3oE90")
+client2 = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 MODEL_ID = "gemini-2.0-flash-exp"
 PRO_MODEL_ID = "gemini-3-pro-image-preview"
 
@@ -607,7 +618,7 @@ def expand_chatbot():
 
         # Save and return the result
         output_id = uuid.uuid4().hex[:8]
-        output_path = os.path.join(app.config["UPLOAD_FOLDER"], f"sculpture_{output_id}.png")
+        output_path = os.path.join(app.config["GENERATED_FOLDER"], f"sculpture_{output_id}.png")
         for part in response.candidates[0].content.parts:
             if part.inline_data is not None:
                 pathlib.Path(output_path).write_bytes(part.inline_data.data)
@@ -615,8 +626,8 @@ def expand_chatbot():
                 break
         output_filename = os.path.basename(output_path)
 
-        print("Image generated successfully. Returning:", {"image_url": f"/static/uploads/{output_filename}"})
-        return jsonify({"image_url": f"/static/uploads/{output_filename}"})
+        print("Image generated successfully. Returning:", {"image_url": f"/static/generated/{output_filename}"})
+        return jsonify({"image_url": f"/static/generated/{output_filename}"})
 
     except Exception as e:
         logging.exception("expand_chatbot failed")
@@ -688,7 +699,7 @@ def chatbot():
                     )
                 )
             output_id = uuid.uuid4().hex[:8]
-            output_path = os.path.join(app.config["UPLOAD_FOLDER"], f"sculpture_{output_id}.png")
+            output_path = os.path.join(app.config["GENERATED_FOLDER"], f"sculpture_{output_id}.png")
             for part in response.candidates[0].content.parts:
                 if part.inline_data is not None:
                     pathlib.Path(output_path).write_bytes(part.inline_data.data)
@@ -701,12 +712,12 @@ def chatbot():
             session["conversation"].append({
                 "role": "assistant", 
                 "content": "Here is your ice sculpture:",
-                "image": f"/static/uploads/{output_filename}"
+                "image": f"/static/generated/{output_filename}"
             })
             session.modified = True
 
             return jsonify({
-                "image_url": f"/static/uploads/{output_filename}"
+                "image_url": f"/static/generated/{output_filename}"
             })
         except Exception as e:
             return jsonify({"response": f"Error generating ice cube image: {str(e)}"})
@@ -959,7 +970,7 @@ def chatbot():
                     )
                 )
             output_id = uuid.uuid4().hex[:8]
-            output_path = os.path.join(app.config["UPLOAD_FOLDER"], f"sculpture_{output_id}.png")
+            output_path = os.path.join(app.config["GENERATED_FOLDER"], f"sculpture_{output_id}.png")
             for part in response.candidates[0].content.parts:
                 if part.inline_data is not None:
                     pathlib.Path(output_path).write_bytes(part.inline_data.data)
@@ -972,13 +983,13 @@ def chatbot():
             session["conversation"].append({
                 "role": "assistant", 
                 "content": "Here is your ice sculpture:",
-                "image": f"/static/uploads/{output_filename}"
+                "image": f"/static/generated/{output_filename}"
             })
             session.modified = True
 
             return jsonify({
                 # "response": "Here's your custom ice sculpture:",
-                "image_url": f"/static/uploads/{output_filename}"
+                "image_url": f"/static/generated/{output_filename}"
             })
         except Exception as e:
             return jsonify({"response": f"Error generating sculpture image: {str(e)}"})
